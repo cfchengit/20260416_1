@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 // 你的網頁應用程式的 Firebase 設定
 // 請替換成你在 Firebase Console 中獲得的實際設定值
 const firebaseConfig = {
-apiKey: "AIzaSyADpwfL6Fp8kAXobb2J-qCEbCiebjSxcWk",
-  authDomain: "project-5135343239306961332.firebaseapp.com",
-  projectId: "project-5135343239306961332",
-  storageBucket: "project-5135343239306961332.firebasestorage.app",
-  messagingSenderId: "96682590548",
-  appId: "1:96682590548:web:2aa7bf9ec8f01f83b108c1",
-  measurementId: "G-Z42RZ2M96D"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
+  measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
 // 初始化 Firebase
