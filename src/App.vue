@@ -117,6 +117,8 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
+import { db } from './firebase.js';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 // 狀態變數 (取代原有的 state 物件，利用 Vue 的響應式 ref)
 const isCountdown = ref(false);
@@ -185,37 +187,43 @@ const editExam = (index) => {
 };
 
 // 新增與儲存考試
-const handleAddExam = () => {
-  if (editingIndex.value !== null) {
-    exams.value[editingIndex.value].time = newExam.time;
-    exams.value[editingIndex.value].subject = newExam.subject;
-    exams.value[editingIndex.value].teacher = newExam.teacher;
-    exams.value[editingIndex.value].notified = false; // 若修改了時間，重置通知狀態
-  } else {
-    exams.value.push({ 
-      time: newExam.time, 
-      subject: newExam.subject, 
-      teacher: newExam.teacher, 
-      notified: false 
-    });
+const handleAddExam = async () => {
+  try {
+    if (editingIndex.value !== null) {
+      const examId = exams.value[editingIndex.value].id;
+      await updateDoc(doc(db, 'exams', examId), {
+        time: newExam.time,
+        subject: newExam.subject,
+        teacher: newExam.teacher,
+        notified: false
+      });
+    } else {
+      await addDoc(collection(db, 'exams'), {
+        time: newExam.time,
+        subject: newExam.subject,
+        teacher: newExam.teacher,
+        notified: false
+      });
+    }
+    await fetchExams(); // 重新從資料庫獲取最新資料
+    closeModal();
+  } catch (error) {
+    console.error("儲存到資料庫時發生錯誤：", error);
   }
-  
-  // 依據時間排序
-  exams.value.sort((a, b) => a.time.localeCompare(b.time));
-  closeModal();
 };
 
 // 刪除考試
-const deleteExam = (index) => {
+const deleteExam = async (index) => {
   if (confirm('確定要刪除這個考科嗎？')) {
-    exams.value.splice(index, 1);
+    try {
+      const examId = exams.value[index].id;
+      await deleteDoc(doc(db, 'exams', examId));
+      await fetchExams(); // 重新讀取資料
+    } catch (error) {
+      console.error("刪除資料時發生錯誤：", error);
+    }
   }
 };
-
-// 監聽 exams 陣列的深度變化，並自動將其儲存到 localStorage
-watch(exams, (newExams) => {
-  localStorage.setItem('exams-data', JSON.stringify(newExams));
-}, { deep: true });
 
 // 監聽自訂警告時間變化並儲存
 watch(warningMinutes, (newVal) => {
@@ -327,13 +335,25 @@ const updateClock = () => {
   }
 };
 
+// 從 Firebase Firestore 讀取資料
+const fetchExams = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'exams'));
+    const loadedExams = [];
+    querySnapshot.forEach((doc) => {
+      loadedExams.push({ id: doc.id, ...doc.data() });
+    });
+    loadedExams.sort((a, b) => a.time.localeCompare(b.time));
+    exams.value = loadedExams;
+  } catch (error) {
+    console.error("讀取資料庫時發生錯誤：", error);
+  }
+};
+
 // 生命週期綁定
 onMounted(() => {
-  // 當元件掛載時，從 localStorage 讀取已儲存的考試資料
-  const savedExams = localStorage.getItem('exams-data');
-  if (savedExams) {
-    exams.value = JSON.parse(savedExams);
-  }
+  // 當元件掛載時，從 Firebase 讀取考試資料
+  fetchExams();
 
   // 讀取已儲存的自訂警告時間
   const savedWarningMin = localStorage.getItem('warning-minutes');
